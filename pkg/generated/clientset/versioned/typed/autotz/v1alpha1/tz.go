@@ -32,7 +32,7 @@ import (
 // TZsGetter has a method to return a TZInterface.
 // A group's client should implement this interface.
 type TZsGetter interface {
-	TZs(namespace string) TZInterface
+	TZs() TZInterface
 }
 
 // TZInterface has methods to work with TZ resources.
@@ -51,14 +51,12 @@ type TZInterface interface {
 // tZs implements TZInterface
 type tZs struct {
 	client rest.Interface
-	ns     string
 }
 
 // newTZs returns a TZs
-func newTZs(c *AutotzV1alpha1Client, namespace string) *tZs {
+func newTZs(c *AutotzV1alpha1Client) *tZs {
 	return &tZs{
 		client: c.RESTClient(),
-		ns:     namespace,
 	}
 }
 
@@ -66,7 +64,6 @@ func newTZs(c *AutotzV1alpha1Client, namespace string) *tZs {
 func (c *tZs) Get(name string, options v1.GetOptions) (result *v1alpha1.TZ, err error) {
 	result = &v1alpha1.TZ{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("tzs").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -83,7 +80,6 @@ func (c *tZs) List(opts v1.ListOptions) (result *v1alpha1.TZList, err error) {
 	}
 	result = &v1alpha1.TZList{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("tzs").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -100,7 +96,6 @@ func (c *tZs) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
-		Namespace(c.ns).
 		Resource("tzs").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -111,7 +106,6 @@ func (c *tZs) Watch(opts v1.ListOptions) (watch.Interface, error) {
 func (c *tZs) Create(tZ *v1alpha1.TZ) (result *v1alpha1.TZ, err error) {
 	result = &v1alpha1.TZ{}
 	err = c.client.Post().
-		Namespace(c.ns).
 		Resource("tzs").
 		Body(tZ).
 		Do().
@@ -123,7 +117,6 @@ func (c *tZs) Create(tZ *v1alpha1.TZ) (result *v1alpha1.TZ, err error) {
 func (c *tZs) Update(tZ *v1alpha1.TZ) (result *v1alpha1.TZ, err error) {
 	result = &v1alpha1.TZ{}
 	err = c.client.Put().
-		Namespace(c.ns).
 		Resource("tzs").
 		Name(tZ.Name).
 		Body(tZ).
@@ -135,7 +128,6 @@ func (c *tZs) Update(tZ *v1alpha1.TZ) (result *v1alpha1.TZ, err error) {
 // Delete takes name of the tZ and deletes it. Returns an error if one occurs.
 func (c *tZs) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("tzs").
 		Name(name).
 		Body(options).
@@ -150,7 +142,6 @@ func (c *tZs) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOpt
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("tzs").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -163,7 +154,6 @@ func (c *tZs) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOpt
 func (c *tZs) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.TZ, err error) {
 	result = &v1alpha1.TZ{}
 	err = c.client.Patch(pt).
-		Namespace(c.ns).
 		Resource("tzs").
 		SubResource(subresources...).
 		Name(name).

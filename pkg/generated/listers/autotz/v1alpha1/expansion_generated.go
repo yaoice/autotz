@@ -21,7 +21,3 @@ package v1alpha1
 // TZListerExpansion allows custom methods to be added to
 // TZLister.
 type TZListerExpansion interface{}
-
-// TZNamespaceListerExpansion allows custom methods to be added to
-// TZNamespaceLister.
-type TZNamespaceListerExpansion interface{}

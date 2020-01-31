@@ -18,8 +18,14 @@ package controller
 
 import (
 	"fmt"
+	"github.com/yaoice/autotz/pkg/utils"
 	"time"
 
+	tzv1alpha1 "github.com/yaoice/autotz/pkg/apis/autotz/v1alpha1"
+	tzsclientset "github.com/yaoice/autotz/pkg/generated/clientset/versioned"
+	tzscheme "github.com/yaoice/autotz/pkg/generated/clientset/versioned/scheme"
+	tzsinformers "github.com/yaoice/autotz/pkg/generated/informers/externalversions/autotz/v1alpha1"
+	tzslisters "github.com/yaoice/autotz/pkg/generated/listers/autotz/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	settingsv1alpha1 "k8s.io/api/settings/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -61,12 +67,16 @@ type Controller struct {
 	// kubeclientset is a standard kubernetes clientset
 	kubeclientset kubernetes.Interface
 	// sampleclientset is a clientset for our own API group
+	tzclientset tzsclientset.Interface
 
 	namespacesLister  corelisters.NamespaceLister
 	namespacesSynced  cache.InformerSynced
 
 	settingsLister settingslisters.PodPresetLister
 	settingsSynced cache.InformerSynced
+
+	tzsLister tzslisters.TZLister
+	tzsSynced cache.InformerSynced
 
 	// workqueue is a rate limited work queue. This is used to queue work to be
 	// processed instead of performing it as soon as a change happens. This
@@ -82,13 +92,16 @@ type Controller struct {
 // NewController returns a new sample controller
 func NewController(
 	kubeclientset kubernetes.Interface,
+	tzclientset tzsclientset.Interface,
 	namespaceInformer coreinformers.NamespaceInformer,
 	settingsInformer settingsinformers.PodPresetInformer,
+	tzsInformer tzsinformers.TZInformer,
 	) *Controller {
 
 	// Create event broadcaster
 	// Add sample-controller types to the default Kubernetes Scheme so Events can be
 	// logged for sample-controller types.
+	utilruntime.Must(tzscheme.AddToScheme(scheme.Scheme))
 	klog.V(4).Info("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
@@ -97,15 +110,32 @@ func NewController(
 
 	controller := &Controller{
 		kubeclientset:     kubeclientset,
+		tzclientset:       tzclientset,
 		namespacesLister:  namespaceInformer.Lister(),
 		namespacesSynced:  namespaceInformer.Informer().HasSynced,
 		settingsLister:    settingsInformer.Lister(),
 		settingsSynced:    namespaceInformer.Informer().HasSynced,
+		tzsLister:         tzsInformer.Lister(),
+		tzsSynced:         tzsInformer.Informer().HasSynced,
 		workqueue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Foos"),
 		recorder:          recorder,
 	}
 
 	klog.Info("Setting up event handlers")
+	tzsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: controller.handleObject,
+		UpdateFunc: func(old, new interface{}) {
+			newTZ := new.(*tzv1alpha1.TZ)
+			oldTZ := old.(*tzv1alpha1.TZ)
+			if newTZ.ResourceVersion == oldTZ.ResourceVersion {
+				// Periodic resync will send update events for all known Deployments.
+				// Two different versions of the same Deployment will always have different RVs.
+				return
+			}
+			controller.handleObject(new)
+		},
+		DeleteFunc: controller.handleObject,
+	})
 
 	// Set up an event handler for when Deployment resources change. This
 	// handler will lookup the owner of the given Deployment, and if it is
@@ -129,7 +159,7 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	defer c.workqueue.ShutDown()
 
 	// Start the informer factories to begin populating the informer caches
-	klog.Info("Starting Foo controller")
+	klog.Info("Starting TZ controller")
 
 	// Wait for the caches to be synced before starting workers
 	klog.Info("Waiting for informer caches to sync")
@@ -224,12 +254,24 @@ func (c *Controller) syncHandler(key string) error {
 		return nil
 	}
 
+	c.tzclientset.AutotzV1alpha1()
+	tz, err := c.tzclientset.AutotzV1alpha1().TZs().Get("example-tz", metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	if utils.Include(tz.Spec.WhiteListNS, name) {
+		klog.Infof("%s in WhiteListNS.", name)
+		return nil
+	}
+
 	// Get the deployment with the name specified in Foo.spec
 	settings, err := c.settingsLister.PodPresets(name).Get("tz")
+
 	// If the resource doesn't exist, we'll create it
 	if errors.IsNotFound(err) {
 		settings, err = c.kubeclientset.SettingsV1alpha1().PodPresets(name).Create(
-			newSettings(name))
+			newSettings(name, tz.Spec.TimeZone))
 	} else if err == nil {
 		// Update settings
 		// Fix update api does not make it
@@ -241,7 +283,7 @@ func (c *Controller) syncHandler(key string) error {
 			return err
 		}
 		settings, err = c.kubeclientset.SettingsV1alpha1().PodPresets(name).Create(
-			newSettings(name))
+			newSettings(name, tz.Spec.TimeZone))
 	}
 
 	// If an error occurs during Get/Create, we'll requeue the item so we can
@@ -268,9 +310,14 @@ func (c *Controller) enqueue(obj interface{}) {
 	c.workqueue.Add(key)
 }
 
-func newSettings(name string) *settingsv1alpha1.PodPreset {
+func (c *Controller) handleObject(obj interface{}) {
+
+}
+
+func newSettings(name, timezone string) *settingsv1alpha1.PodPreset {
 	labels := map[string]string{
 	}
+
 	return &settingsv1alpha1.PodPreset{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "tz",
@@ -282,7 +329,7 @@ func newSettings(name string) *settingsv1alpha1.PodPreset {
 			},
 			Env: []corev1.EnvVar{{
 				Name:      "TZ",
-				Value:     "Asia/Shanghai",
+				Value:     timezone,
 			},
 			},
 		},

@@ -41,5 +41,5 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 
 // TZs returns a TZInformer.
 func (v *version) TZs() TZInformer {
-	return &tZInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &tZInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

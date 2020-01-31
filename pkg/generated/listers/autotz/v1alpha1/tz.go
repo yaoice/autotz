@@ -29,8 +29,8 @@ import (
 type TZLister interface {
 	// List lists all TZs in the indexer.
 	List(selector labels.Selector) (ret []*v1alpha1.TZ, err error)
-	// TZs returns an object that can list and get TZs.
-	TZs(namespace string) TZNamespaceLister
+	// Get retrieves the TZ from the index for a given name.
+	Get(name string) (*v1alpha1.TZ, error)
 	TZListerExpansion
 }
 
@@ -52,38 +52,9 @@ func (s *tZLister) List(selector labels.Selector) (ret []*v1alpha1.TZ, err error
 	return ret, err
 }
 
-// TZs returns an object that can list and get TZs.
-func (s *tZLister) TZs(namespace string) TZNamespaceLister {
-	return tZNamespaceLister{indexer: s.indexer, namespace: namespace}
-}
-
-// TZNamespaceLister helps list and get TZs.
-type TZNamespaceLister interface {
-	// List lists all TZs in the indexer for a given namespace.
-	List(selector labels.Selector) (ret []*v1alpha1.TZ, err error)
-	// Get retrieves the TZ from the indexer for a given namespace and name.
-	Get(name string) (*v1alpha1.TZ, error)
-	TZNamespaceListerExpansion
-}
-
-// tZNamespaceLister implements the TZNamespaceLister
-// interface.
-type tZNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all TZs in the indexer for a given namespace.
-func (s tZNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.TZ, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.TZ))
-	})
-	return ret, err
-}
-
-// Get retrieves the TZ from the indexer for a given namespace and name.
-func (s tZNamespaceLister) Get(name string) (*v1alpha1.TZ, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+// Get retrieves the TZ from the index for a given name.
+func (s *tZLister) Get(name string) (*v1alpha1.TZ, error) {
+	obj, exists, err := s.indexer.GetByKey(name)
 	if err != nil {
 		return nil, err
 	}

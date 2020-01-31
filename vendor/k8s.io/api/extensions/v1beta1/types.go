@@ -67,6 +67,13 @@ type Scale struct {
 	Status ScaleStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Dummy definition
+type ReplicationControllerDummy struct {
+	metav1.TypeMeta `json:",inline"`
+}
+
 // +genclient
 // +genclient:method=GetScale,verb=get,subresource=scale,result=Scale
 // +genclient:method=UpdateScale,verb=update,subresource=scale,input=Scale,result=Scale
@@ -922,7 +929,7 @@ type PodSecurityPolicySpec struct {
 	// +optional
 	AllowedFlexVolumes []AllowedFlexVolume `json:"allowedFlexVolumes,omitempty" protobuf:"bytes,18,rep,name=allowedFlexVolumes"`
 	// AllowedCSIDrivers is a whitelist of inline CSI drivers that must be explicitly set to be embedded within a pod spec.
-	// An empty value indicates that any CSI driver can be used for inline ephemeral volumes.
+	// An empty value means no CSI drivers can run inline within a pod spec.
 	// +optional
 	AllowedCSIDrivers []AllowedCSIDriver `json:"allowedCSIDrivers,omitempty" protobuf:"bytes,23,rep,name=allowedCSIDrivers"`
 	// allowedUnsafeSysctls is a list of explicitly allowed unsafe sysctls, defaults to none.
@@ -949,11 +956,6 @@ type PodSecurityPolicySpec struct {
 	// This requires the ProcMountType feature flag to be enabled.
 	// +optional
 	AllowedProcMountTypes []v1.ProcMountType `json:"allowedProcMountTypes,omitempty" protobuf:"bytes,21,opt,name=allowedProcMountTypes"`
-	// runtimeClass is the strategy that will dictate the allowable RuntimeClasses for a pod.
-	// If this field is omitted, the pod's runtimeClassName field is unrestricted.
-	// Enforcement of this field depends on the RuntimeClass feature gate being enabled.
-	// +optional
-	RuntimeClass *RuntimeClassStrategyOptions `json:"runtimeClass,omitempty" protobuf:"bytes,24,opt,name=runtimeClass"`
 }
 
 // AllowedHostPath defines the host volume conditions that will be enabled by a policy
@@ -978,7 +980,7 @@ type AllowedHostPath struct {
 // Deprecated: use FSType from policy API Group instead.
 type FSType string
 
-const (
+var (
 	AzureFile             FSType = "azureFile"
 	Flocker               FSType = "flocker"
 	FlexVolume            FSType = "flexVolume"
@@ -1169,25 +1171,6 @@ const (
 	SupplementalGroupsStrategyRunAsAny SupplementalGroupsStrategyType = "RunAsAny"
 )
 
-// RuntimeClassStrategyOptions define the strategy that will dictate the allowable RuntimeClasses
-// for a pod.
-type RuntimeClassStrategyOptions struct {
-	// allowedRuntimeClassNames is a whitelist of RuntimeClass names that may be specified on a pod.
-	// A value of "*" means that any RuntimeClass name is allowed, and must be the only item in the
-	// list. An empty list requires the RuntimeClassName field to be unset.
-	AllowedRuntimeClassNames []string `json:"allowedRuntimeClassNames" protobuf:"bytes,1,rep,name=allowedRuntimeClassNames"`
-	// defaultRuntimeClassName is the default RuntimeClassName to set on the pod.
-	// The default MUST be allowed by the allowedRuntimeClassNames list.
-	// A value of nil does not mutate the Pod.
-	// +optional
-	DefaultRuntimeClassName *string `json:"defaultRuntimeClassName,omitempty" protobuf:"bytes,2,opt,name=defaultRuntimeClassName"`
-}
-
-// AllowAllRuntimeClassNames can be used as a value for the
-// RuntimeClassStrategyOptions.AllowedRuntimeClassNames field and means that any RuntimeClassName is
-// allowed.
-const AllowAllRuntimeClassNames = "*"
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // PodSecurityPolicyList is a list of PodSecurityPolicy objects.
@@ -1203,7 +1186,6 @@ type PodSecurityPolicyList struct {
 	Items []PodSecurityPolicy `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
-// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // DEPRECATED 1.9 - This group version of NetworkPolicy is deprecated by networking/v1/NetworkPolicy.
@@ -1289,7 +1271,7 @@ type NetworkPolicyIngressRule struct {
 	// List of sources which should be able to access the pods selected for this rule.
 	// Items in this list are combined using a logical OR operation.
 	// If this field is empty or missing, this rule matches all sources (traffic not restricted by source).
-	// If this field is present and contains at least one item, this rule allows traffic only if the
+	// If this field is present and contains at least on item, this rule allows traffic only if the
 	// traffic matches at least one item in the from list.
 	// +optional
 	From []NetworkPolicyPeer `json:"from,omitempty" protobuf:"bytes,2,rep,name=from"`
@@ -1334,15 +1316,15 @@ type NetworkPolicyPort struct {
 }
 
 // DEPRECATED 1.9 - This group version of IPBlock is deprecated by networking/v1/IPBlock.
-// IPBlock describes a particular CIDR (Ex. "192.168.1.1/24","2001:db9::/64") that is allowed
-// to the pods matched by a NetworkPolicySpec's podSelector. The except entry describes CIDRs
-// that should not be included within this rule.
+// IPBlock describes a particular CIDR (Ex. "192.168.1.1/24") that is allowed to the pods
+// matched by a NetworkPolicySpec's podSelector. The except entry describes CIDRs that should
+// not be included within this rule.
 type IPBlock struct {
 	// CIDR is a string representing the IP Block
-	// Valid examples are "192.168.1.1/24" or "2001:db9::/64"
+	// Valid examples are "192.168.1.1/24"
 	CIDR string `json:"cidr" protobuf:"bytes,1,name=cidr"`
 	// Except is a slice of CIDRs that should not be included within an IP Block
-	// Valid examples are "192.168.1.1/24" or "2001:db9::/64"
+	// Valid examples are "192.168.1.1/24"
 	// Except values will be rejected if they are outside the CIDR range
 	// +optional
 	Except []string `json:"except,omitempty" protobuf:"bytes,2,rep,name=except"`

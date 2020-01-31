@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"github.com/yaoice/autotz/pkg/client"
+	tzclientset "github.com/yaoice/autotz/pkg/generated/clientset/versioned"
+	tzinformers "github.com/yaoice/autotz/pkg/generated/informers/externalversions"
 	corev1 "k8s.io/api/core/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -26,6 +28,7 @@ var (
 	masterURL  string
 	kubeconfig string
 	kubeClient *kubernetes.Clientset
+	tzClient   *tzclientset.Clientset
 	err error
 	LockNameSpace     string
 	LockName          string
@@ -40,9 +43,9 @@ func main() {
 	klog.InitFlags(nil)
 	flag.Parse()
 
-	kubeClient, err = client.GetInClusterClientSet()
+	kubeClient, tzClient, err = client.GetInClusterClientSet()
 	if err != nil {
-		kubeClient, err = client.GetClusterClientSetWithKC(masterURL, kubeconfig)
+		kubeClient, tzClient, err = client.GetClusterClientSetWithKC(masterURL, kubeconfig)
 		if err != nil {
 			klog.Fatalf("Error building kubernetes clientset: %s", err.Error())
 		}
@@ -107,15 +110,21 @@ func run() {
 	stopCh := signals.SetupSignalHandler()
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
-
-	controller := controller.NewController(kubeClient,
+	tzInformerFactory := tzinformers.NewSharedInformerFactory(tzClient, time.Second*30)
+//	tzInformerFactory := tzinformers.NewSharedInformerFactoryWithOptions(tzClient, time.Second*30,
+//		tzinformers.WithTweakListOptions(func(l *v1.ListOptions){
+//		tzClient.AutotzV1alpha1().TZs("").List(*l)
+//		}))
+	controller := controller.NewController(kubeClient, tzClient,
 		kubeInformerFactory.Core().V1().Namespaces(),
 		kubeInformerFactory.Settings().V1alpha1().PodPresets(),
+		tzInformerFactory.Autotz().V1alpha1().TZs(),
 	)
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
 	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
 	kubeInformerFactory.Start(stopCh)
+	tzInformerFactory.Start(stopCh)
 
 	if err := controller.Run(2, stopCh); err != nil {
 		klog.Fatalf("Error running controller: %s", err.Error())

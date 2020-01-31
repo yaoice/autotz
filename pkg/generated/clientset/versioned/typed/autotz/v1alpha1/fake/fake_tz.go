@@ -31,7 +31,6 @@ import (
 // FakeTZs implements TZInterface
 type FakeTZs struct {
 	Fake *FakeAutotzV1alpha1
-	ns   string
 }
 
 var tzsResource = schema.GroupVersionResource{Group: "autotz.k8s.io", Version: "v1alpha1", Resource: "tzs"}
@@ -41,8 +40,7 @@ var tzsKind = schema.GroupVersionKind{Group: "autotz.k8s.io", Version: "v1alpha1
 // Get takes name of the tZ, and returns the corresponding tZ object, and an error if there is any.
 func (c *FakeTZs) Get(name string, options v1.GetOptions) (result *v1alpha1.TZ, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(tzsResource, c.ns, name), &v1alpha1.TZ{})
-
+		Invokes(testing.NewRootGetAction(tzsResource, name), &v1alpha1.TZ{})
 	if obj == nil {
 		return nil, err
 	}
@@ -52,8 +50,7 @@ func (c *FakeTZs) Get(name string, options v1.GetOptions) (result *v1alpha1.TZ, 
 // List takes label and field selectors, and returns the list of TZs that match those selectors.
 func (c *FakeTZs) List(opts v1.ListOptions) (result *v1alpha1.TZList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(tzsResource, tzsKind, c.ns, opts), &v1alpha1.TZList{})
-
+		Invokes(testing.NewRootListAction(tzsResource, tzsKind, opts), &v1alpha1.TZList{})
 	if obj == nil {
 		return nil, err
 	}
@@ -74,15 +71,13 @@ func (c *FakeTZs) List(opts v1.ListOptions) (result *v1alpha1.TZList, err error)
 // Watch returns a watch.Interface that watches the requested tZs.
 func (c *FakeTZs) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(tzsResource, c.ns, opts))
-
+		InvokesWatch(testing.NewRootWatchAction(tzsResource, opts))
 }
 
 // Create takes the representation of a tZ and creates it.  Returns the server's representation of the tZ, and an error, if there is any.
 func (c *FakeTZs) Create(tZ *v1alpha1.TZ) (result *v1alpha1.TZ, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(tzsResource, c.ns, tZ), &v1alpha1.TZ{})
-
+		Invokes(testing.NewRootCreateAction(tzsResource, tZ), &v1alpha1.TZ{})
 	if obj == nil {
 		return nil, err
 	}
@@ -92,8 +87,7 @@ func (c *FakeTZs) Create(tZ *v1alpha1.TZ) (result *v1alpha1.TZ, err error) {
 // Update takes the representation of a tZ and updates it. Returns the server's representation of the tZ, and an error, if there is any.
 func (c *FakeTZs) Update(tZ *v1alpha1.TZ) (result *v1alpha1.TZ, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(tzsResource, c.ns, tZ), &v1alpha1.TZ{})
-
+		Invokes(testing.NewRootUpdateAction(tzsResource, tZ), &v1alpha1.TZ{})
 	if obj == nil {
 		return nil, err
 	}
@@ -103,14 +97,13 @@ func (c *FakeTZs) Update(tZ *v1alpha1.TZ) (result *v1alpha1.TZ, err error) {
 // Delete takes name of the tZ and deletes it. Returns an error if one occurs.
 func (c *FakeTZs) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(tzsResource, c.ns, name), &v1alpha1.TZ{})
-
+		Invokes(testing.NewRootDeleteAction(tzsResource, name), &v1alpha1.TZ{})
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeTZs) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(tzsResource, c.ns, listOptions)
+	action := testing.NewRootDeleteCollectionAction(tzsResource, listOptions)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.TZList{})
 	return err
@@ -119,8 +112,7 @@ func (c *FakeTZs) DeleteCollection(options *v1.DeleteOptions, listOptions v1.Lis
 // Patch applies the patch and returns the patched tZ.
 func (c *FakeTZs) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.TZ, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(tzsResource, c.ns, name, pt, data, subresources...), &v1alpha1.TZ{})
-
+		Invokes(testing.NewRootPatchSubresourceAction(tzsResource, name, pt, data, subresources...), &v1alpha1.TZ{})
 	if obj == nil {
 		return nil, err
 	}

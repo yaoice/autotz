@@ -1,0 +1,11 @@
+apiVersion: autotz.k8s.io/v1alpha1
+kind: TZ
+metadata:
+  name: example-tz
+spec:
+  timeZone: "Asia/Shanghai"
+  whiteListNS:
+    - "kube-system"
+    - "kube-node-lease"
+    - "default"
+

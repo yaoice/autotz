@@ -35,8 +35,8 @@ type AutotzV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *AutotzV1alpha1Client) TZs(namespace string) TZInterface {
-	return newTZs(c, namespace)
+func (c *AutotzV1alpha1Client) TZs() TZInterface {
+	return newTZs(c)
 }
 
 // NewForConfig creates a new AutotzV1alpha1Client for the given config.

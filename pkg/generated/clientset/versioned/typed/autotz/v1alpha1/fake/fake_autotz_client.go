@@ -28,8 +28,8 @@ type FakeAutotzV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeAutotzV1alpha1) TZs(namespace string) v1alpha1.TZInterface {
-	return &FakeTZs{c, namespace}
+func (c *FakeAutotzV1alpha1) TZs() v1alpha1.TZInterface {
+	return &FakeTZs{c}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
