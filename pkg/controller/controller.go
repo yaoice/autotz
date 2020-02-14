@@ -254,7 +254,6 @@ func (c *Controller) syncHandler(key string) error {
 		return nil
 	}
 
-	c.tzclientset.AutotzV1alpha1()
 	tz, err := c.tzclientset.AutotzV1alpha1().TZs().Get("example-tz", metav1.GetOptions{})
 	if err != nil {
 		return err
