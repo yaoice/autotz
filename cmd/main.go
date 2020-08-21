@@ -133,6 +133,7 @@ func run() {
 
 func StoppedLeading() {
 	klog.Infof("%s: stopped leading", hostname())
+	os.Exit(0)
 }
 
 func NewLeader(id string) {
